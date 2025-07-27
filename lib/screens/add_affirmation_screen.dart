@@ -4,7 +4,9 @@ import '../services/database_helper.dart';
 import '../services/notification_service.dart';
 
 class AddAffirmationScreen extends StatefulWidget {
-  const AddAffirmationScreen({super.key});
+  final Affirmation? affirmation;
+
+  const AddAffirmationScreen({super.key, this.affirmation});
 
   @override
   State<AddAffirmationScreen> createState() => _AddAffirmationScreenState();
@@ -14,6 +16,16 @@ class _AddAffirmationScreenState extends State<AddAffirmationScreen> {
   final _textController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+
+  bool get _isEditing => widget.affirmation != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      _textController.text = widget.affirmation!.text;
+    }
+  }
 
   @override
   void dispose() {
@@ -27,8 +39,15 @@ class _AddAffirmationScreenState extends State<AddAffirmationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final affirmation = Affirmation(text: _textController.text.trim());
-      await DatabaseHelper().insertAffirmation(affirmation);
+      if (_isEditing) {
+        final updatedAffirmation = widget.affirmation!.copyWith(
+          text: _textController.text.trim(),
+        );
+        await DatabaseHelper().updateAffirmation(updatedAffirmation);
+      } else {
+        final affirmation = Affirmation(text: _textController.text.trim());
+        await DatabaseHelper().insertAffirmation(affirmation);
+      }
       await NotificationService().scheduleAffirmationNotifications();
 
       if (mounted) {
@@ -51,7 +70,7 @@ class _AddAffirmationScreenState extends State<AddAffirmationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Affirmation'),
+        title: Text(_isEditing ? 'Edit Affirmation' : 'Add Affirmation'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           if (_isLoading)

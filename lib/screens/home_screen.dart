@@ -99,6 +99,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _navigateToEditScreen(Affirmation affirmation) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddAffirmationScreen(affirmation: affirmation),
+      ),
+    );
+    if (result == true) {
+      await _loadAffirmations();
+    }
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -191,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: InkWell(
-              onTap: () => _toggleAffirmationStatus(affirmation),
+              onTap: () => _navigateToEditScreen(affirmation),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.all(16),

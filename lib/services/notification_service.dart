@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -65,19 +66,19 @@ class NotificationService {
 
     // Schedule notifications for each reminder time
     for (int i = 0; i < settings.reminderTimes.length; i++) {
-      final hour = settings.reminderTimes[i];
-      await _scheduleNotificationForTime(hour, i, affirmations, settings.randomOrder);
+      final time = settings.reminderTimes[i];
+      await _scheduleNotificationForTime(time, i, affirmations, settings.randomOrder);
     }
   }
 
   Future<void> _scheduleNotificationForTime(
-    int hour,
+    TimeOfDay time,
     int notificationId,
     List<Affirmation> affirmations,
     bool randomOrder,
   ) async {
     final now = DateTime.now();
-    var scheduledDate = DateTime(now.year, now.month, now.day, hour, 0);
+    var scheduledDate = DateTime(now.year, now.month, now.day, time.hour, time.minute);
     
     // If the time has passed today, schedule for tomorrow
     if (scheduledDate.isBefore(now)) {

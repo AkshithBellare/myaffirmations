@@ -67,11 +67,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       initialTime: const TimeOfDay(hour: 12, minute: 0),
     ).then((time) {
       if (time != null) {
-        final hour = time.hour;
-        if (!_settings.reminderTimes.contains(hour)) {
+        if (!_settings.reminderTimes.any((t) => t.hour == time.hour && t.minute == time.minute)) {
           setState(() {
             _settings = _settings.copyWith(
-              reminderTimes: [..._settings.reminderTimes, hour]..sort(),
+              reminderTimes: [..._settings.reminderTimes, time]..sort((a, b) {
+                final aTotalMinutes = a.hour * 60 + a.minute;
+                final bTotalMinutes = b.hour * 60 + b.minute;
+                return aTotalMinutes.compareTo(bTotalMinutes);
+              }),
             );
           });
           _saveSettings();
@@ -80,17 +83,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  void _removeReminderTime(int hour) {
+  void _removeReminderTime(TimeOfDay time) {
     setState(() {
       _settings = _settings.copyWith(
-        reminderTimes: _settings.reminderTimes.where((h) => h != hour).toList(),
+        reminderTimes: _settings.reminderTimes.where((t) => t != time).toList(),
       );
     });
     _saveSettings();
   }
 
-  String _formatHour(int hour) {
-    final time = TimeOfDay(hour: hour, minute: 0);
+  String _formatTime(TimeOfDay time) {
     return time.format(context);
   }
 
@@ -207,10 +209,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           else
                             Wrap(
                               spacing: 8,
-                              children: _settings.reminderTimes.map((hour) {
+                              children: _settings.reminderTimes.map((time) {
                                 return Chip(
-                                  label: Text(_formatHour(hour)),
-                                  onDeleted: () => _removeReminderTime(hour),
+                                  label: Text(_formatTime(time)),
+                                  onDeleted: () => _removeReminderTime(time),
                                   deleteIcon: const Icon(Icons.close, size: 18),
                                 );
                               }).toList(),
