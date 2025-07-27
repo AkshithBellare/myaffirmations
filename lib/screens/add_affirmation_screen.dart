@@ -35,7 +35,7 @@ class _AddAffirmationScreenState extends State<AddAffirmationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Affirmation saved successfully!')),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Pass true to indicate success
       }
     } catch (e) {
       setState(() => _isLoading = false);

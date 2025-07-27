@@ -1,3 +1,4 @@
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter/material.dart';
 import '../models/notification_settings.dart';
 import '../services/database_helper.dart';
@@ -95,16 +96,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notification Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: _isLoading
+    return _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Appearance',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        ValueListenableBuilder<AdaptiveThemeMode>(
+                          valueListenable: AdaptiveTheme.of(context).modeChangeNotifier,
+                          builder: (context, mode, child) {
+                            return SegmentedButton<AdaptiveThemeMode>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: AdaptiveThemeMode.light,
+                                  label: Text('Light'),
+                                  icon: Icon(Icons.light_mode),
+                                ),
+                                ButtonSegment(
+                                  value: AdaptiveThemeMode.dark,
+                                  label: Text('Dark'),
+                                  icon: Icon(Icons.dark_mode),
+                                ),
+                                ButtonSegment(
+                                  value: AdaptiveThemeMode.system,
+                                  label: Text('Auto'),
+                                  icon: Icon(Icons.brightness_auto),
+                                ),
+                              ],
+                              selected: {mode},
+                              onSelectionChanged: (newSelection) {
+                                if (newSelection.isNotEmpty) {
+                                  AdaptiveTheme.of(context).setThemeMode(newSelection.first);
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -242,13 +286,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
-            ),
-      floatingActionButton: _isSaving
-          ? const FloatingActionButton(
-              onPressed: null,
-              child: CircularProgressIndicator(),
-            )
-          : null,
-    );
+            );
   }
 }

@@ -4,6 +4,7 @@ import '../services/database_helper.dart';
 import '../services/notification_service.dart';
 import 'add_affirmation_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/custom_nav_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Affirmation> _affirmations = [];
   bool _isLoading = true;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -29,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await NotificationService().requestPermissions();
     } catch (e) {
       // Handle initialization errors gracefully
-      print('Error initializing notification service: $e');
+      print('Error initializing notification service: \$e');
     }
     // Load affirmations after service initialization
     await _loadAffirmations();
@@ -47,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading affirmations: $e')),
+          SnackBar(content: Text('Error loading affirmations: \$e')),
         );
       }
     }
@@ -66,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting affirmation: $e')),
+          SnackBar(content: Text('Error deleting affirmation: \$e')),
         );
       }
     }
@@ -81,59 +83,61 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating affirmation: $e')),
+          SnackBar(content: Text('Error updating affirmation: \$e')),
         );
       }
     }
   }
 
+  void _navigateToAddScreen() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddAffirmationScreen()),
+    );
+    if (result == true) {
+      await _loadAffirmations();
+    }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Affirmations'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () async {
-              await NotificationService().showInstantAffirmation();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Instant affirmation sent!')),
-                );
-              }
-            },
-            tooltip: 'Send instant affirmation',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-              await _loadAffirmations();
-            },
-          ),
-        ],
-      ),
-      body: _isLoading
+    final List<Widget> pages = <Widget>[
+      _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _affirmations.isEmpty
               ? _buildEmptyState()
-              : _buildAffirmationsList(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddAffirmationScreen()),
-          );
-          await _loadAffirmations();
-        },
-        tooltip: 'Add new affirmation',
-        child: const Icon(Icons.add),
+              : _buildAffirmationsGrid(),
+      const SettingsScreen(),
+    ];
+
+    final List<String> titles = <String>[
+      'Affirmations',
+      'Settings',
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(titles[_selectedIndex]),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
+      body: pages[_selectedIndex],
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+      ),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton(
+              onPressed: _navigateToAddScreen,
+              tooltip: 'Add new affirmation',
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
@@ -167,71 +171,97 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAffirmationsList() {
+  Widget _buildAffirmationsGrid() {
     return RefreshIndicator(
       onRefresh: _loadAffirmations,
-      child: ListView.builder(
+      child: GridView.builder(
         padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 400,
+          childAspectRatio: 3 / 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
         itemCount: _affirmations.length,
         itemBuilder: (context, index) {
           final affirmation = _affirmations[index];
           return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              title: Text(
-                affirmation.text,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: affirmation.isActive
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  decoration: affirmation.isActive ? null : TextDecoration.lineThrough,
-                ),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Created ${_formatDate(affirmation.createdAt)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () => _toggleAffirmationStatus(affirmation),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      affirmation.text,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: affirmation.isActive
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        decoration: affirmation.isActive ? null : TextDecoration.lineThrough,
                       ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Created ${_formatDate(affirmation.createdAt)}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'toggle':
+                                _toggleAffirmationStatus(affirmation);
+                                break;
+                              case 'delete':
+                                _showDeleteConfirmation(affirmation);
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'toggle',
+                              child: Row(
+                                children: [
+                                  Icon(affirmation.isActive ? Icons.pause : Icons.play_arrow),
+                                  const SizedBox(width: 8),
+                                  Text(affirmation.isActive ? 'Deactivate' : 'Activate'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Delete', style: TextStyle(color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              trailing: PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'toggle':
-                      _toggleAffirmationStatus(affirmation);
-                      break;
-                    case 'delete':
-                      _showDeleteConfirmation(affirmation);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'toggle',
-                    child: Row(
-                      children: [
-                        Icon(affirmation.isActive ? Icons.pause : Icons.play_arrow),
-                        const SizedBox(width: 8),
-                        Text(affirmation.isActive ? 'Deactivate' : 'Activate'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Delete', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ),
           );
@@ -251,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (difference.inDays < 7) {
       return '${difference.inDays} days ago';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '\${date.day}/\${date.month}/\${date.year}';
     }
   }
 
@@ -279,3 +309,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
